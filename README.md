@@ -88,11 +88,13 @@ git clone https://github.com/The1only/AI_talk_to_me.git
 
    'Mary' listens for pauses in the talk, as humans, so when you have asked a question and are silent, she will start processing the question. 
 
+   If you add "exit this program" in you're spoken sentence, then the program will exit.
+
 9. Tuning
 
    There are several parameters that might need tuning:
 
-      # Get available output devices
+      ### Get available output devices
       mixer.init()
       print("Outputs:", devices.audio.get_audio_device_names(False))
       mixer.quit()
@@ -100,14 +102,14 @@ git clone https://github.com/The1only/AI_talk_to_me.git
 
       You might need to change this parameter according to the printout or comment out all these lines to get the default output device.
 
-      # Set the voice threshold
+      ### Set the voice threshold
       print(str((x+old_x)/2.0)+" : " + str(rms*2)) 
       if ((x+old_x)/2.0) > (rms*2):
 
       By enabling the print line you can see how strong you're voice is compared to the background, and then set the scaling factor accordingly.
       In a quiet environment, I have found 10 to be OK, in a noisy environment I have found 2 to be OK.
 
-      # Set the silence threshold
+      ### Set the silence threshold
       Check if rms is low enough to stop recording...
       if x < rms*2:
 

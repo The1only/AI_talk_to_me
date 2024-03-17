@@ -307,7 +307,7 @@ else:
     while True:
         
         transcribed_text = get_text()
-        if transcribed_text == None:
+        if transcribed_text == None or "exit this program" in transcribed_text:
             engine.say("Thank you for now, hope to talk to you soon. Goodbye.")
             engine.runAndWait()
             print("Exiting")

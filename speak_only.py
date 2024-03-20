@@ -15,6 +15,11 @@ import time
 import struct
 import math
 from pygame import mixer, _sdl2 as devices
+import wikipedia
+import webbrowser
+import datetime
+import pyjokes
+
 
 print("All libraries and modules have been imported successfully... ")      
 print("Booting up the system...")
@@ -24,6 +29,7 @@ mixer.init()
 print("Outputs:", devices.audio.get_audio_device_names(False))
 mixer.quit()
 mixer.init(devicename = 'MacBook Air Speakers')
+#mixer.init(devicename = "Terje’s AirPods Pro")
 
 #------------------------------------------------
 # Point to the local server
@@ -159,7 +165,7 @@ def record_audio(rms):
         x = get_rms(data) 
       #  print(str((x+old_x)/2.0)+" : " + str(rms*2)) #10))
 
-        if ((x+old_x)/2.0) > (rms*2):
+        if ((x+old_x)/2.0) > (rms*2.5):
             frames.append(lastdata) # Also add frame before the loud sound...
             frames.append(data)
             break 
@@ -189,7 +195,7 @@ def record_audio(rms):
         x=x/len(newrms)
 
         # Check if rms is low enough to stop recording...
-        if x < rms*2:
+        if x < rms*1.5: #2:
             break 
 
     stream.stop_stream()
@@ -245,7 +251,10 @@ def wait_for_silence():
 # Step 13: Define function to process user input and generate response
 def process_input(input_text):
     conversation = [
-        {"role": "system", "content": "You are Mary, the assistant chatbot. As youre name is Mary you will answer questions addressed to Mary only. My name is "+my_name+", the human and user. Your role is to assist the human, who is known as "+my_name+". Respond concisely and accurately, maintaining a friendly, respectful, and professional tone. Emphasize honesty, candor, and precision in your responses."},
+        {"role": "system", "content": "You are Mary, the assistant chatbot. As youre name is Mary you will answer questions addressed to Mary only. \
+        My name is "+my_name+", the human and user. Your role is to assist the human, who is known as "+my_name+". \
+        Respond concisely and accurately, maintaining a friendly, respectful, and professional tone. \
+        Emphasize honesty, candor, and precision in your responses."},
         {"role": "user", "content": input_text}
     ]
 
@@ -256,9 +265,9 @@ def process_input(input_text):
     )
 
     assistant_reply = completion.choices[0].message.content
-    print(f"{colors['magenta']}KITT:{colors['reset']} {assistant_reply}")
-    print("I'll speak when quiet.!")
+    print(f"{colors['magenta']}I'll speak when quiet.!{colors['reset']}")
     wait_for_silence()
+    print(f"{colors['magenta']}KITT:{colors['reset']} {assistant_reply}")
     speak(assistant_reply)
     
 #------------------------------------------------
@@ -273,9 +282,22 @@ def get_text():
     os.remove(audio_file)  # Cleanup
     return transcribed_text
 
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
+
 #------------------------------------------------
 #------------------------------------------------
 #------------------------------------------------
+# MacOS
+chrome_path = 'open -a /Applications/Google\ Chrome.app %s'
+
+# Windows
+# chrome_path = 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe %s'
+
+# Linux
+# chrome_path = '/usr/bin/google-chrome %s'
+
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
@@ -284,14 +306,15 @@ listener.start()
 # Get avrage rms value for background noise...
 rms = getNoiseLevel()
 
-engine.say("Hello, my name is Mary, what is youre name?")
-engine.runAndWait()
+speak("Hello, my name is Mary, what is youre name?")
 
-x = get_text()
+x = ""
+while x == "" and len(x) < 1:
+    x = get_text()
+
 if x == None:
     print("Thank you for now, hope to talk to you soon. Goodbye.")
-    engine.say("Thank you for now, hope to talk to you soon. Goodbye.")
-    engine.runAndWait()
+    speak("Thank you for now, hope to talk to you soon. Goodbye.")
     print("Exiting")
     
 else:
@@ -299,8 +322,7 @@ else:
     my_name = x[len(x)-1]
     
     print("Hello "+my_name+", How can I assist you today?")
-    engine.say("Hello "+my_name+", How can I assist you today?")
-    engine.runAndWait()
+    speak("Hello "+my_name+", How can I assist you today?")
 
     #------------------------------------------------
     # Step 14: Main loop to continuously monitor for user input
@@ -308,21 +330,67 @@ else:
         
         transcribed_text = get_text()
         if transcribed_text == None or "exit this program" in transcribed_text:
-            engine.say("Thank you for now, hope to talk to you soon. Goodbye.")
-            engine.runAndWait()
+            speak("Thank you for now, hope to talk to you soon. Goodbye.")
             print("Exiting")
             break
 
         print(f"{colors['blue']}VTM:{colors['reset']} {transcribed_text}")
         if "Mary" in transcribed_text:            
-            engine.say("So you're saying. ")
-            engine.runAndWait()
-            engine.say(transcribed_text)
-            engine.runAndWait()
-            engine.say("Let me think for a moment")
-            engine.runAndWait()
 
-            process_input(transcribed_text)
+            transcribed_text_lower = transcribed_text.lower()
+
+            if 'wikipedia' in transcribed_text_lower:
+                engine.say('Searching Wikipedia...')
+                engine.runAndWait()
+                transcribed_text_lower = transcribed_text_lower.replace("wikipedia", "")
+                transcribed_text_lower = transcribed_text_lower.replace("mary", "")
+                print(transcribed_text_lower)
+                results = wikipedia.summary(transcribed_text_lower, sentences = 3)
+                speak("According to Wikipedia")
+                speak(results)
+                print(results)
+
+            elif 'open youTube' in transcribed_text_lower:
+                speak("Here you go to Youtube\n")
+                webbrowser.get(chrome_path).open("http://youtube.com")
+
+            elif 'open the news' in transcribed_text_lower:
+                speak("Here you go to VG\n")
+                webbrowser.get(chrome_path).open("http://vg.no")
+        
+            elif 'open google' in transcribed_text_lower:
+                speak("Here you go to Google\n")
+                webbrowser.get(chrome_path).open("http://google.com")
+
+            elif 'what time is it' in transcribed_text_lower:
+                strTime = datetime.datetime.now().strftime("%H %M")
+                print(f"The time right now is {strTime}") 
+                speak(f"The time right now is {strTime}")
+
+            elif 'what year is it' in transcribed_text_lower:
+                strTime = datetime.datetime.now().strftime("%Y")
+                print(f"The year is {strTime}") 
+                speak(f"The year is {strTime}")
+
+            elif 'what date is it' in transcribed_text_lower:
+                strTime = datetime.datetime.now().strftime("%d of %m")
+                print(f"The date is {strTime}") 
+                speak(f"The date is {strTime}")
+
+            elif 'joke' in transcribed_text_lower:
+                speak(pyjokes.get_joke())
+            
+            elif 'search the web' in transcribed_text_lower:
+                transcribed_text_lower = transcribed_text_lower.replace("search the web", "") 
+                transcribed_text_lower = transcribed_text_lower.replace("mary", "")
+                print(transcribed_text_lower) 
+                webbrowser.get(chrome_path).open("https://www.google.com/search?q="+transcribed_text_lower)
+
+            else:
+                speak("So you're saying. ")
+                speak(transcribed_text)
+                speak("Let me think for a moment")
+                process_input(transcribed_text)
     
 #------------------------------------------------
 # Step 15: Cleanup audio resources

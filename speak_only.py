@@ -3,6 +3,9 @@
 # Add embedding using embedding model instructor, chroma eller influx
 # HKUMlp large
 
+# arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 Blink 
+# arduino-cli upload -p /dev/tty.usbmodem11401   --fqbn  esp32:esp32:XIAO_ESP32S3 Blink
+
 # Step 1: Import necessary libraries and modules
 import json
 import warnings
@@ -33,19 +36,19 @@ import language_text as lang
 LANGUAGE = 'en_US'
 #LANGUAGE = 'nb_NO'
 
-RUN_QUIET = True
-DO_NOT_SPEAK = True
+RUN_QUIET = False
+DO_NOT_SPEAK = False
 
 lang.language_initialize(LANGUAGE)
 
 # Get available output devices
 mixer.init()
 print("Outputs/Inputs:", devices.audio.get_audio_device_names(False))
-mixer.quit()
+#mixer.quit()
 #mixer.init(devicename = 'MacBook Air Speakers')
 #mixer.init(devicename = 'Built-in Output')
 #mixer.init(devicename = "Terje’s AirPods Pro")
-mixer.init(devicename = "WH-CH510")
+#mixer.init(devicename = "WH-CH510")
 #mixer.init(devicename = "BS1")
 
 #------------------------------------------------
@@ -115,6 +118,65 @@ chrome_path = 'open -a /Applications/Google\ Chrome.app %s'
 # Linux
 # chrome_path = '/usr/bin/google-chrome %s'
 
+#        {'type': 'function', 'function': {'name': 'get_number', 'description': 'get_number(symbol: real) -> list - Get the next number in a sequence of numbers given by the human. Args: number (list): A list of numbers in a seemingly random order.  Returns:  real: The next number in the sequence.', \
+#        'parameters': {'type': 'object', 'properties': {'symbol': {'type': 'list'}}, 'required': ['symbol']}}} \
+
+# PS: Some how the LLM is able to create the function call shutdown even without it being in the prompt...
+#        {'type': 'function', 'function': {'name': 'shutdown', 'description': 'shutdown() - The system will shut down. Args: none. Returns:  none.'}} \
+#        \
+
+
+if LANGUAGE=="nb_NO":
+    prompt = [
+        {"role": "system", "content": "Ditt navn er Mary, en chatbot assistent. \
+        Mitt navn er "+my_name+", en menneskelig bruker. Din rolle er å assistere menneske men navnet "+my_name+". \
+        Du svarer konsisten, nøyaktig, oppretholder en vennlig tone, respektfult, og professionelt. \
+        Du vektleger ærlighet, oppriktighet, og er pressis i dine svar."}
+    ]
+else:
+    prompt = [
+        {"role": "system", "content": "You are Mary, a function calling assistant chatbot. \
+        My name is "+my_name+", the human and user. Your role is to assist the human. Respond concisely and accurately, maintaining a friendly, respectful, and professional tone. \
+        Emphasize honesty, candor, and precision in your responses. \
+        You are provided with function signatures within <tools></tools> XML tags. \
+        You may call one or more functions to assist with the user query. \
+        Don't make assumptions about what values to plug into functions. \
+        Here are the available tools: \
+        <tools> \
+        {'type': 'function', 'function': {'name': 'shutdown', 'description': 'shutdown() - The system will shut down. Args: none. Returns:  none.'}} \
+        \
+        {'type': 'function', 'function': {'name': 'start_new', 'description': 'start_new() -> list - Start a new conversation. Args: none. Returns:  string: A new conversation.'}} \
+        \
+        {'type': 'function', 'function': {'name': 'get_number', 'description': 'get_number(symbol: real) -> list - Get the next number in a sequence of numbers given by the human. Args: number (list): A list of numbers in a seemingly random order.  Returns:  real: The next number in the sequence.', \
+        'parameters': {'type': 'object', 'properties': {'number': {'type': 'list'}}, 'required': ['number']}}} \
+        \
+        {'type': 'function', 'function': {'name': 'compile_arduino', 'description': 'compile_arduino(file: string) -> list - Only compile the requested arduino program. Args: file (string): The filename to be compiled.  Returns:  string: The compiler result.', \
+        'parameters': {'type': 'object', 'properties': {'file': {'type': 'string'}}, 'required': ['file']}}} \
+        \
+        {'type': 'function', 'function': {'name': 'program_arduino', 'description': 'program_arduino(file: string) -> list - Only progran the arduino board with the requested program. Args: file (string): The file name to be programmed to the board.  Returns:  string: The board programming result.', \
+        'parameters': {'type': 'object', 'properties': {'file': {'type': 'string'}}, 'required': ['file']}}} \
+        \
+        {'type': 'function', 'function': {'name': 'create_empty_git_repo', 'description': 'create_empty_git_repo(projectname: string) -> list - Create an empty GIT reposotry with the requested project name, and a default README file describing the project. Args: {projectname (string): The project name to be generated, description (string): The project description}  Returns:  string: The result.', \
+        'parameters': {'type': 'object', 'properties': {'projectname': {'type': 'string'}}, 'description': {'type': 'string'}}, 'required': ['projectname']}}} \
+        \
+        {'type': 'function', 'function': {'name': 'write_a_file', 'description': 'write_a_file(filename: string) -> list - Store a file with the given file name and content for later usage. Args: {filename (string): The filename to be generated with the reqested content, content (string): The actual file content to be stored }  Returns:  string: The result.', \
+        'parameters': {'type': 'object', 'properties': {'filename': {'type': 'string'}}, 'content': {'type': 'string'}}, 'required': ['filename','content']}}} \
+        \
+        {'type': 'function', 'function': {'name': 'get_time', 'description': 'get_time() -> list - Get the current local time. Args: none. Returns:  string: The current local time.'}} \
+        \
+        {'type': 'function', 'function': {'name': 'get_year', 'description': 'get_year() -> list - Get the current local year that we are in. Args: none. Returns:  string: The current local year.'}} \
+        \
+        {'type': 'function', 'function': {'name': 'get_date', 'description': 'get_date() -> list - Get the current local date. Args: none. Returns:  string: The current local date.'}} \
+        </tools> \
+        Use the following pydantic model json schema for each tool call you will make: \
+        {'title': 'FunctionCall', 'type': 'object', 'properties': {'arguments': {'title': 'Arguments', 'type': 'object'}, 'name': {'title': 'Name', 'type': 'string'}}, 'required': ['arguments', 'name']} \
+        For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows: \
+        <tool_call> \
+        {'arguments': <args-list>, 'name': <function-name>} \
+        </tool_call> "}
+    ]
+
+conversation = prompt.copy()
 #------------------------------------------------
 # language  : en_US, de_DE, ...
 # gender    : VoiceGenderFemale, VoiceGenderMale
@@ -233,7 +295,7 @@ def record_audio(rms):
         newrms.append(get_rms(data))
 
         # Moving average of rms...
-        if len(newrms) > 10:
+        if len(newrms) > 5:
             newrms.pop(0)
         x = 0
         for i in newrms:
@@ -300,8 +362,11 @@ def get_number(y):
     ret = 0
 
     for x in y:
-        ret = ret + x
-
+        if type(x) == int or type(x) == float:
+            ret = ret + x
+        else:
+            return "parameter not a number"
+        
     return ret
 #------------------------------------------------
 def get_time():
@@ -316,101 +381,159 @@ def get_year():
     """Get the local year."""
     return datetime.datetime.now().strftime("%Y")
 
+#------------------------------------------------
+def compile_arduino(file):
+    print("Compiling file " + str(file) + "...")
+    command = "arduino-cli compile --fqbn esp32:esp32:XIAO_ESP32S3 "+file
+    os.system(command)
+    return "OK"
+
+#------------------------------------------------
+def program_arduino(file):
+    print("Programming file " + file + "...")
+    command = "arduino-cli upload -p /dev/tty.usbmodem11401 --fqbn esp32:esp32:XIAO_ESP32S3 "+file
+    os.system(command)
+    return "OK"
+
+#------------------------------------------------    
+def create_empty_git_repo(project, description="Empty project"):
+    os.mkdir(project)
+    os.chdir(project)
+    command = "git init"
+    os.system(command)
+    command = str(project) + " > README.md"
+    os.system(command)
+#    os.system('git commit -a -m "Initial commit" --no-edit --dry-run ')
+    os.system('git commit -a -m "Initial commit" --no-edit -q ')
+    return "OK"
+
+#------------------------------------------------
+def write_a_file(filename, content):
+    with open(filename, 'w') as f:
+        f.write(content)
+        f.close()
+    return "OK"
+
+#------------------------------------------------
+def start_new():
+    global conversation
+    conversation = prompt.copy()
+    return "New conversation started!"
+
+def shutdown():
+    mixer.quit()
+    audio.terminate()
+    speak("Shutting down...")
+    exit()
 
 #------------------------------------------------
 # Step 13: Define function to process user input and generate response
 def process_input(input_text):
-    
-    if LANGUAGE=="nb_NO":
-        conversation = [
-            {"role": "system", "content": "Ditt navn er Mary, en chatbot assistent. \
-            Mitt navn er "+my_name+", en menneskelig bruker. Din rolle er å assistere menneske men navnet "+my_name+". \
-            Du svarer konsisten, nøyaktig, oppretholder en vennlig tone, respektfult, og professionelt. \
-            Du vektleger ærlighet, oppriktighet, og er pressis i dine svar."},
-            {"role": "user", "content": input_text}
-        ]
-    else:
-        conversation = [
-            {"role": "system", "content": "You are Mary, a function calling assistant chatbot. \
-            My name is "+my_name+", the human and user. Your role is to assist the human. Respond concisely and accurately, maintaining a friendly, respectful, and professional tone. \
-            Emphasize honesty, candor, and precision in your responses. \
-            You are provided with function signatures within <tools></tools> XML tags. \
-            You may call one or more functions to assist with the user query. \
-            Don't make assumptions about what values to plug into functions. \
-            Here are the available tools: \
-            <tools> \
-            {'type': 'function', 'function': {'name': 'get_number', 'description': 'get_number(symbol: real) -> list - Get the next number in a sequence of numbers. Args: number (list): The list of numbers.  Returns:  real: The next number in the sequence.', \
-            'parameters': {'type': 'object', 'properties': {'symbol': {'type': 'list'}}, 'required': ['symbol']}}} \
-            {'type': 'function', 'function': {'name': 'get_time', 'description': 'get_time() -> list - Get the current local time. Args: none. Returns:  string: The current local time.'}} \
-            {'type': 'function', 'function': {'name': 'get_year', 'description': 'get_year() -> list - Get the current local year that we are in. Args: none. Returns:  string: The current local year.'}} \
-            {'type': 'function', 'function': {'name': 'get_date', 'description': 'get_date() -> list - Get the current local date. Args: none. Returns:  string: The current local date.'}} \
-            </tools> \
-            Use the following pydantic model json schema for each tool call you will make: \
-            {'title': 'FunctionCall', 'type': 'object', 'properties': {'arguments': {'title': 'Arguments', 'type': 'object'}, 'name': {'title': 'Name', 'type': 'string'}}, 'required': ['arguments', 'name']} \
-            For each function call return a json object with function name and arguments within <tool_call></tool_call> XML tags as follows: \
-            <tool_call> \
-            {'arguments': <args-list>, 'name': <function-name>} \
-            </tool_call> "},
-            {"role": "user", "content": input_text}
-        ]
+    global conversation
+
+    conversation.append( {"role": "user", "content" : input_text})
+    print(conversation)
 
     completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
     assistant_reply = completion.choices[0].message.content
     
     #Function calling...
     if "<tool_call>" in assistant_reply:
+        print(assistant_reply)
         assistant = assistant_reply.replace("'","\"")
         pos  = 0
 
         while True:
             tool_call = json.loads(assistant[pos:].split("<tool_call>")[1].split("</tool_call>")[0])     
      #       print(tool_call)
-            function_name = tool_call["name"]
- 
+            try:
+                function_name = tool_call["name"]
+            except KeyError:
+                function_name = None
+
+            if function_name == None:
+                response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                answer = "<tool_response>"+str({'name': 'get_number',  'content' : {'answer': "This is an illegal function call"}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
+                completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
+  
             # Select the correct function...
             if function_name == "get_number":
                 # Get the parameters...
-                arguments = tool_call["arguments"]
-    #           print(str(function_name)+"   :  "+str(arguments))
-                number = arguments["symbol"]
-                
-                # Call the function...
-                result = get_number(number)
-                
-                # Make the assistant reply. This is always the same for all function calls...
+                try:
+                    number = tool_call["arguments"]["number"]
+                except KeyError:
+                    number = None
+
+                if not number == None:
+                    # Call the function...
+                    result = get_number(number)
+                    # Make the assistant reply. This is always the same for all function calls...
+                    response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                    conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                    # Make the actual reply...
+                    answer = "<tool_response>"+str({'name': 'get_number',  'content' : {'answer': result}})+"</tool_response>"
+                    conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
+                    # Run the AI again to make the full reply...
+                    completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
+
+            if function_name == "write_a_file":
+                print(tool_call["arguments"])
+                project = tool_call["arguments"]["filename"]
+                description = tool_call["arguments"]["description"]
+                result = write_a_file(project, description)
                 response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
                 conversation.append( {"role": completion.choices[0].message.role, "content" : response})
-                
-                # Make the actual reply...
-                answer = "<tool_response>"+str({'name': 'get_number',  'content' : {'answer': result}})+"</tool_response>"
-                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                
-                
-                # Run the AI again to make the full reply...
+                answer = "<tool_response>"+str({'name': 'write_a_file',  'content' : {'answer': result}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
                 completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
-       #         assistant_reply = completion.choices[0].message.content   
-          #      speak(assistant_reply)
+
+            if function_name == "create_empty_git_repo":
+                print(tool_call["arguments"])
+                project = tool_call["arguments"]["projectname"]
+                description = tool_call["arguments"]["description"]
+                result = create_empty_git_repo(project, description)
+                response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                answer = "<tool_response>"+str({'name': 'create_empty_git_repo',  'content' : {'answer': result}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
+                completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
+
+            if function_name == "compile_arduino":
+                file = tool_call["arguments"]["symbol"]
+                result = compile_arduino(file)
+                response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                answer = "<tool_response>"+str({'name': 'compile_arduino',  'content' : {'answer': result}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
+                completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
+                
+            if function_name == "program_arduino":
+                file = tool_call["arguments"]["symbol"]
+                result = program_arduino(file)
+                response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                answer = "<tool_response>"+str({'name': 'program_arduino',  'content' : {'answer': result}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })                                
+                completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
+
+            if function_name == "start_new":
+                result = start_new()
+                response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
+                conversation.append( {"role": completion.choices[0].message.role, "content" : response})
+                answer = "<tool_response>"+str({'name': 'start_new',  'content' : {'answer': result}})+"</tool_response>"
+                conversation.append( {"role": completion.choices[0].message.role, "content" : answer })   
+                completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
 
             # Select the correct function...
             if function_name == "get_time":
-
-                # Call the function...
                 result = get_time()
-          #      print(result)
-                
-                # Make the assistant reply. This is always the same for all function calls...
                 response = assistant[pos:assistant[pos:].find("</tool_call>") + 12]
                 conversation.append( {"role": completion.choices[0].message.role, "content" : response})
-                
-                # Make the actual reply...
                 answer = "<tool_response>"+str({'name': 'get_time',  'content' : {'answer': result}})+"</tool_response>"
                 conversation.append( {"role": completion.choices[0].message.role, "content" : answer })   
-                
-        #        print(conversation)             
-                
-                # Run the AI again to make the full reply...
                 completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
-          #      assistant_reply = completion.choices[0].message.content   
-          #      speak(assistant_reply)
 
             # Select the correct function...
             if function_name == "get_date":
@@ -429,15 +552,21 @@ def process_input(input_text):
                 conversation.append( {"role": completion.choices[0].message.role, "content" : answer })   
                 completion = client.chat.completions.create( model="local-model", messages=conversation, temperature=0.7 )
 
+            if function_name == "shutdown":
+                result = shutdown()
+
             pos=pos+assistant[pos:].find("</tool_call>") + 11
             if  not "<tool_call>" in assistant[pos:]:
            #     print(conversation)
                 assistant_reply = completion.choices[0].message.content 
+
+                conversation.append( {"role": completion.choices[0].message.role, "content" : completion.choices[0].message.content})
                 speak(assistant_reply)
                 break
 
     else:
    #     wait_for_silence()
+        conversation.append( {"role": completion.choices[0].message.role, "content" : completion.choices[0].message.content})
         speak(assistant_reply)
     
 #------------------------------------------------
@@ -487,19 +616,34 @@ if __name__ == "__main__":
 
     else:
         x = x.split()
-        print(x)
+    #    print(x)
         my_name = x[len(x)-1]
         speak("Hey "+my_name+", "+lang.language_get_text('assist'))
 
         #------------------------------------------------
         # Step 14: Main loop to continuously monitor for user input
+        num = 0
+#        while num < 3:
         while True:
-            
             if RUN_QUIET:
-               # transcribed_text = "Hey Mary, in a sequence of numbers 1, 2, 5, 13 what is the next number?"
-                transcribed_text = "Mary, if you take a sequence of numbers, 1, 1, 2, 4, 6, what would be the next number? And could you at the same time also tell me what time it is?. And what year are we inn?. And what is todays date?"
-    #           transcribed_text = "Hey Mary, who was the president in the United States twenty years ago?"
-    #            transcribed_text = "Hey Mary, What is the difference between alcohols and carboxylic acids?"
+                transcribed = [
+                    "Mary, Can you write a python program that adds two real values that it will get as user input?",
+                    "can you store the content you just showed me to a file on disk for later usage? Mary",
+                    "Mary, Yes please",
+                    "Mary, Do you know the arduino programming language",
+                    "Mary, Can you write a new arduino program that will blink the led on pin 13, and save it to a file?",
+                    "Mary, Can you create a GIT repositry with the name Test1, the repositry will be used for a python project that will generate test numbers from 0 to 100?",
+                    "Mary, Can you program the arduino board with the file Blink?",
+                    "Mary, Can you compile the arduino file Blink, and then program it to the arduino board?",
+                    "Hey Mary, who was the president in the United States twenty years ago?",
+                    "Hey Mary, What is the difference between alcohols and carboxylic acids?",
+                    "Hey Mary, in a sequence of numbers 1, 2, 5, 13 what is the next number?",
+                    "Mary, Who was the president in the United States in 1990?",
+                    "and who was next president in the United States after that, Mary?",
+                    "Mary, if you take a sequence of numbers, 1, 1, 2, 4, 6, what would be the next number? And could you at the same time also tell me what time it is?. And what year are we inn?. And what is todays date?"]
+                transcribed_text = transcribed[num]
+                num=num+1
+                if num == len(transcribed): num = 0
             else:
                 transcribed_text = get_text()
 
@@ -539,14 +683,6 @@ if __name__ == "__main__":
                 elif 'open google' in transcribed_text_lower:
                     speak("Here you go to Google\n")
                     webbrowser.get(chrome_path).open("http://google.com")
-
-                elif 'what year is it' in transcribed_text_lower:
-                    strTime = datetime.datetime.now().strftime("%Y")
-                    speak(f"The year is {strTime}")
-
-                elif 'what date is it' in transcribed_text_lower:
-                    strTime = datetime.datetime.now().strftime("%d of %m")
-                    speak(f"The date is {strTime}")
 
                 elif 'joke' in transcribed_text_lower:
                     speak(pyjokes.get_joke())
